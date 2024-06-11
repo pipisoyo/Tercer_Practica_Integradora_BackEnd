@@ -134,13 +134,12 @@ const viewsController = {
      */
     renderRestore: (req, res) => {
         addLogger(req, res, async () => {
-            const token = req.params.token; // Obtener el token correctamente
+            const token = req.params.token; 
             jwt.verify(token, 'secretKey', (err, decoded) => {
                 if (err) {
-                    // Mostrar una alerta antes de redirigir a la vista de login
                     res.send('<script>alert("El enlace ha caducado o es inválido. Solicita un nuevo enlace de recuperación."); window.location.href = "/login";</script>');
                 } else {
-                    res.render('restore',{token}); // Renderizar la vista "restore" si el token es válido
+                    res.render('restore',{token});
                 }
             });
         });

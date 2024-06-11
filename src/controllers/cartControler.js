@@ -69,37 +69,43 @@ const cartControler = {
  * @param {object} req - Objeto de solicitud.
  * @param {object} res - Objeto de respuesta.
  */
-    addProductToCart: (req, res) => {
-        addLogger(req, res, async () => {
-            req.logger.info('Agregando un producto al carrito');
+addProductToCart: (req, res) => {
+    addLogger(req, res, async () => {
+        /**
+         * @param {string} req.params.pid - ID del producto a agregar.
+         * @param {string} req.params.cid - ID del carrito al que se agrega el producto.
+         * @param {number} quantity - Cantidad del producto a agregar (por defecto: 1).
+         */
+        req.logger.info('Agregando un producto al carrito');
 
-            const pid = req.params.pid;
-            const cid = req.params.cid;
-            const quantity = 1;
-            let user= req.session.user;
-            try {
-                let cart = await cartsService.getCartById(cid);
+        const pid = req.params.pid;
+        const cid = req.params.cid;
+        const quantity = 1;
+        let user = req.session.user;
 
-                if (!cart || cart.length === 0) {
-                    cart = await cartsService.createCart();
-                }
-                
-                let product = await productsService.getById(pid)
+        try {
+            let cart = await cartsService.getCartById(cid);
 
-                if (user.role === "premiun" && product.owner === user.email){
-                    req.logger.warn('No puede agregar productos que creaste');
-                    response.errorResponse(res, 404, "No puede agregar productos que creaste");
-                    return
-                }
-                await cartsService.addProductToCart(cid, pid, quantity);
-                req.logger.info('Producto agregado al carrito con éxito');
-                response.successResponse(res, 201, "Producto agregado al carrito");
-            } catch (error) {
-                req.logger.error('Error al intentar agregar el producto al carrito: ' + error.message);
-                response.errorResponse(res, 500, "Error al intentar agregar el producto al Carrito");
+            if (!cart || cart.length === 0) {
+                cart = await cartsService.createCart();
             }
-        });
-    },
+            
+            let product = await productsService.getById(pid);
+
+            if (user.role === "premiun" && product.owner === user.email) {
+                req.logger.warn('No puede agregar productos que creaste');
+                return response.errorResponse(res, 404, "No puede agregar productos que creaste");
+            }
+
+            await cartsService.addProductToCart(cid, pid, quantity);
+            req.logger.info('Producto agregado al carrito con éxito');
+            return response.successResponse(res, 201, "Producto agregado al carrito");
+        } catch (error) {
+            req.logger.error('Error al intentar agregar el producto al carrito: ' + error.message);
+            return response.errorResponse(res, 500, "Error al intentar agregar el producto al Carrito");
+        }
+    });
+},
 
     /**
  * Elimina un producto del carrito.

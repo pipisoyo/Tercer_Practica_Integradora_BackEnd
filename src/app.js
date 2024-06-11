@@ -35,16 +35,15 @@ app.use("/api/sessions", sessionsRouter);
 app.use("/loggerTest",logsRoute)
 app.use(viewesRoutes);
 
-
-
- // Genera productos aleatorios
+// Genera productos aleatorios
+/**
+ * Ruta para generar productos aleatorios.
+ */
 app.get('/mockingproducts/:numOfProducts', (req, res) => {
     const numOfProducts = req.params.numOfProducts
     const products = generateProducts(numOfProducts);
     res.json(products); 
-  });
-
-
+});
 
 // Handlebars
 /**
@@ -53,7 +52,12 @@ app.get('/mockingproducts/:numOfProducts', (req, res) => {
 app.engine('handlebars', handlebars.engine())
 app.set('view engine', 'handlebars');
 
+// Middleware de manejo de errores
+/**
+ * Middleware para manejo de errores.
+ */
 app.use(errorHandler);
+
 // Passport - autenticación
 /**
  * Inicialización de Passport para autenticación.

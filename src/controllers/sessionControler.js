@@ -4,6 +4,9 @@ import response from '../config/responses.js';
 import userDTO from '../dao/DTOs/users.dto.js';
 import { addLogger } from '../utils/logger.js';
 import { getEmailFromToken, sendMailRestore } from '../utils/mailing.js';
+import appConfig from '../config.js';
+
+let mode = appConfig.mode
 
 /**
  * Controlador para la gestión de sesiones de usuario.
@@ -16,14 +19,14 @@ const sessionController = {
      * @param {object} res - Objeto de respuesta.
      */
     logout: (req, res) => {
-        addLogger(req,res,() =>{
+        addLogger(req, res, () => {
             req.session.destroy((err) => {
                 if (err) {
                     req.logger.error('Sesión cerrada exitosamente')
                     return response.successResponse(res, 200, 'Sesión cerrada exitosamente', null);
-                    }
-                    req.loger.error('Error al cerrar sesión')
-                    return response.errorResponse(res, 500, 'Error al cerrar sesión');
+                }
+                req.loger.error('Error al cerrar sesión')
+                return response.errorResponse(res, 500, 'Error al cerrar sesión');
             });
         });
     },
@@ -74,7 +77,12 @@ const sessionController = {
             };
             const user = userDTO(req.user);
             req.logger.info('Inicio de sesión exitoso');
-            response.successResponse(res, 200, 'Inicio de sesión exitoso', { user });
+            if (mode === "dev") {
+                const data = { user, userId: req.user._id.toString() };
+                response.successResponse(res, 200, 'Inicio de sesión exitoso', data);
+            } else {
+                response.successResponse(res, 200, 'Inicio de sesión exitoso', { user });
+            }
         });
     },
 
@@ -122,101 +130,120 @@ const sessionController = {
         });
     },
 
-    /**
-     * Restaura la contraseña de un usuario.
-     * @param {object} req - Objeto de solicitud.
-     * @param {object} res - Objeto de respuesta.
-     */
-    restorePassword: (req, res) => {
-        addLogger(req, res, async () => {
-            req.logger.info('Restaurando contraseña de usuario');
-            let email = getEmailFromToken(req.params.token)
-            let  {password}  = req.body.obj;
-            userModel.findOne({ email }).then(user => {
-                console.log("🚀 ~ userModel.findOne ~ user:", user)
-                if (!user) {
-                    req.logger.error('No se encuentra el usuario');
-                    return response.errorResponse(res, 400, 'No se encuentra el usuario');
-                }
+   /**
+ * Restaura la contraseña de un usuario.
+ * @param {object} req - Objeto de solicitud.
+ * @param {object} res - Objeto de respuesta.
+ */
+restorePassword: (req, res) => {
+    addLogger(req, res, async () => {
+        req.logger.info('Restaurando contraseña de usuario');
+        let email = getEmailFromToken(req.params.token);
+        let { password } = req.body.obj;
+        userModel.findOne({ email }).then(user => {
+            console.log("🚀 ~ userModel.findOne ~ user:", user);
+            if (!user) {
+                req.logger.error('No se encuentra el usuario');
+                return response.errorResponse(res, 400, 'No se encuentra el usuario');
+            }
 
-                if (isValidPassword(user, password)) {
-                    req.logger.error('La nueva contraseña es igual a la contraseña actual');
-                    return response.errorResponse(res, 400, 'No es posible utilizar la misma contraseña');
-                }
-                
-                const newPassword = createHash(password);
-    
-                userModel.updateOne({ _id: user._id }, { $set: { password: newPassword } }).then(() => {
-                    req.logger.info('Contraseña actualizada correctamente');
-                    response.successResponse(res, 200, 'Contraseña actualizada correctamente', null);
-                });
+            if (isValidPassword(user, password)) {
+                req.logger.error('La nueva contraseña es igual a la contraseña actual');
+                return response.errorResponse(res, 400, 'No es posible utilizar la misma contraseña');
+            }
+
+            const newPassword = createHash(password);
+
+            userModel.updateOne({ _id: user._id }, { $set: { password: newPassword } }).then(() => {
+                req.logger.info('Contraseña actualizada correctamente');
+                response.successResponse(res, 200, 'Contraseña actualizada correctamente', null);
+            });
+        }).catch(err => {
+            req.logger.error('Error al restaurar contraseña: ' + err.message);
+            response.errorResponse(res, 500, 'Error al restaurar contraseña');
+        });
+    });
+},
+
+/**
+ * Obtiene el usuario actualmente autenticado.
+ * @param {object} req - Objeto de solicitud.
+ * @param {object} res - Objeto de respuesta.
+ */
+getCurrentUser: (req, res) => {
+    addLogger(req, res, () => {
+        if (req.session.user) {
+            req.logger.info('Obteniendo usuario autenticado');
+            const user = userDTO(req.session.user);
+            response.successResponse(res, 200, 'Usuario autenticado', { user });
+        } else {
+            req.logger.error('Usuario no autenticado');
+            response.errorResponse(res, 401, 'Usuario no autenticado');
+        }
+    });
+},
+
+
+/**
+ * Envía un correo para restaurar la contraseña.
+ * @param {object} req - Objeto de solicitud.
+ * @param {object} res - Objeto de respuesta.
+ */
+mailRestore: (req, res) => {
+    /**
+     * @param {string} req.body.email - Correo electrónico del usuario.
+     */
+    addLogger(req, res, () => {
+        req.logger.info('Verificando email');
+        const { email } = req.body;
+        userModel.findOne({ email }).then(user => {
+            if (!user) {
+                req.logger.error('No se encuentra el usuario');
+                return response.errorResponse(res, 400, 'No se encuentra el usuario');
+            }
+            sendMailRestore(email).then(() => {
+                req.logger.info('Email enviado');
+                response.successResponse(res, 200, 'Email enviado', null);
+            });
+        }).catch(err => {
+            req.logger.error('Error al enviar el email: ' + err.message);
+            response.errorResponse(res, 500, 'Error al enviar el email');
+        });
+    });
+},
+
+/**
+ * Actualiza el rol de un usuario a premium o estándar.
+ * @param {object} req - Objeto de solicitud.
+ * @param {object} res - Objeto de respuesta.
+
+ */
+premiun: (req, res) => {
+    /**
+    * @param {string} req.params.uid - ID del usuario a actualizar.
+    */
+    addLogger(req, res, async () => {
+        req.logger.info('Verificando informacion');
+        const uid = req.params.uid;
+        userModel.findById(uid).then(user => {
+            if (!user) {
+                req.logger.error('No se encuentra el usuario');
+                return response.errorResponse(res, 404, 'No se encuentra el usuario');
+            }
+
+            let newRole = user.role === "premiun" ? "user" : "premiun";
+
+            userModel.updateOne({ _id: uid }, { role: newRole }).then(() => {
+                req.logger.info(`Rol actualizado a ${newRole}`);
+                response.successResponse(res, 200, `Rol actualizado a ${newRole}, por favor vuelva a iniciar sesión`, null);
+                req.session.destroy();
             }).catch(err => {
-                req.logger.error('Error al restaurar contraseña: ' + err.message);
-                response.errorResponse(res, 500, 'Error al restaurar contraseña');
+                req.logger.error('Error al actualizar el rol: ' + err.message);
+                response.errorResponse(res, 500, 'Error al actualizar el rol');
             });
         });
-    },
-
-            /**
-     * Obtiene el usuario actualmente autenticado.
-     * @param {object} req - Objeto de solicitud.
-     * @param {object} res - Objeto de respuesta.
-     */
-            getCurrentUser: (req, res) => {
-                addLogger(req, res, () => {
-                    if (req.session.user) {
-                        req.logger.info('Obteniendo usuario autenticado');
-                        const user = userDTO(req.session.user);
-                        response.successResponse(res, 200, 'Usuario autenticado', { user });
-                    } else {
-                        req.logger.error('Usuario no autenticado');
-                        response.errorResponse(res, 401, 'Usuario no autenticado');
-                    }
-                });
-            },
-
-            mailRestore: (req, res) => {
-                addLogger(req, res, () => {
-                    req.logger.info('Verificando email');
-                    const { email} = req.body;
-                    userModel.findOne({ email }).then(user => {
-                        if (!user) {
-                            req.logger.error('No se encuentra el usuario');
-                            return response.errorResponse(res, 400, 'No se encuentra el usuario');
-                        }
-                        sendMailRestore(email).then(() => {
-                            req.logger.info('Email enviado');
-                            response.successResponse(res, 200, 'Email enviado', null);
-                        });
-                    }).catch(err => {
-                        req.logger.error('Error al enviar el email: ' + err.message);
-                        response.errorResponse(res, 500, 'Error al enviar el email');
-                    });
-                });
-            },
-            
-            premiun: (req, res) => {
-                addLogger(req, res, async () => {
-                    req.logger.info('Verificando email'); 
-                    const uid = req.params.uid;
-                    userModel.findById(uid).then(user => {
-                        if (!user) {
-                            req.logger.error('No se encuentra el usuario');
-                            return response.errorResponse(res, 400, 'No se encuentra el usuario');
-                        }
-                        
-                        let newRole = user.role === "premiun" ? "user" : "premiun";
-                        
-                        userModel.updateOne({ _id: uid }, { role: newRole }).then(() => {
-                            req.logger.info(`Rol actualizado a ${newRole}`);
-                            response.successResponse(res, 200, `Rol actualizado a ${newRole}`, null);
-                        }).catch(err => {
-                            req.logger.error('Error al actualizar el rol: ' + err.message);
-                            response.errorResponse(res, 500, 'Error al actualizar el rol');
-                        });
-                    });
-                });
-            }
+    });
+}
 };
 
 export default sessionController;

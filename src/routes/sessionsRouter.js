@@ -55,14 +55,14 @@ sessionsRouter.get("/githubcallback", passport.authenticate("github", { failureR
 
 /**
  * Ruta para restablecer la contraseña.
- * @name POST /restore
+ * @name POST /restore/:token
  * @function
  */
 sessionsRouter.post("/restore/:token", sessionController.restorePassword);
 
 /**
- * Ruta para restablecer la contraseña.
- * @name POST /restore
+ * Ruta para enviar correo de restauración de contraseña.
+ * @name POST /mailRestore
  * @function
  */
 sessionsRouter.post("/mailRestore", sessionController.mailRestore);
@@ -75,8 +75,8 @@ sessionsRouter.post("/mailRestore", sessionController.mailRestore);
 sessionsRouter.get('/current', auth, sessionController.getCurrentUser);
 
 /**
- * Ruta para obtener el usuario actual.
- * @name GET /current
+ * Ruta para cambiar a rol premium.
+ * @name PUT /premiun/:uid
  * @function
  */
 sessionsRouter.put('/premiun/:uid', sessionController.premiun);

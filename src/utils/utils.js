@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt'
 import nodemailer from "nodemailer";
 import config from '../config.js';
 import ticketModel from '../dao/models/tickets.js';
-import { faker } from '@faker-js/faker';
+import { fakerES as faker } from '@faker-js/faker'
 
 import ProductDTO from '../dao/DTOs/products.dto.js';
 
@@ -70,6 +70,9 @@ export function calculateTotalAmount(products) {
   return totalAmount;
 }
 
+/**
+ * Opciones de configuración para enviar correos electrónicos.
+ */
 const mailOptions = {
   service: "gmail",
   host: "smtp.gmail.com",
@@ -81,10 +84,13 @@ const mailOptions = {
   },
 };
 
-
+/**
+ * Función asincrónica para enviar un correo con los detalles de la compra.
+ * @param {object} ticket - Información del ticket de compra.
+ * @returns {string} Mensaje de confirmación del envío del correo.
+ */
 export async function sendMail(ticket) {
-
-              const transport = nodemailer.createTransport(mailOptions);
+ const transport = nodemailer.createTransport(mailOptions);
              
   try {
  const res = await ticketModel.findOne({code : ticket.code}).populate('productsToPurchase.product').lean().exec();
@@ -120,12 +126,16 @@ export async function sendMail(ticket) {
 
 return "Correo enviado";
   } catch (error) {
-    // Maneja cualquier error que pueda ocurrir durante el envío del correo
     console.error("Error al enviar el correo:", error);
-    throw error; // O maneja el error de alguna otra manera que consideres adecuada
+    throw error;
   }
 }
 
+/**
+ * Genera una cantidad especificada de productos aleatorios.
+ * @param {number} numOfProducts - Número de productos a generar.
+ * @returns {object} Objeto con la lista de productos generados.
+ */
 export const generateProducts =(numOfProducts)=>{
   let products=[];
   for (let i = 0 ; i < numOfProducts; i++){
@@ -138,6 +148,11 @@ export const generateProducts =(numOfProducts)=>{
   };
 };
 
+/**
+ * Crea un producto aleatorio con datos falsos.
+ * @returns {object} Producto generado aleatoriamente.
+ * @throws {Error} Si algún campo obligatorio está vacío.
+ */
 const createProduct = () => {
   try{
   const productData = {

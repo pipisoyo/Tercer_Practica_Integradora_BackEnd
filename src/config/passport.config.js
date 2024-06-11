@@ -25,7 +25,6 @@ const initializePassport = () => {
       { passReqToCallback: true, usernameField: "email" },
       async (req, username, password, done) => {
         const { first_name, last_name, email, age } = req.body;
-        console.log("🚀 ~ req.body;:", req.body)
 
         try {
           const user = await userModel.findOne({ email: username });
